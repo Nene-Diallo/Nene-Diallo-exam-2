@@ -1,0 +1,237 @@
+---
+title: "Nene Diallo Exam 2"
+author: "Nene Diallo"
+date: "2024-11-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+#Q1: Using My calculator: 
+# the prediction for a person who is....
+#25: 12.18+-0.308(25)+0.0048(25)^2+-0.00003(25)^3 = 7.46125
+#45: 12.18+-0.308(45)+0.0048(45)^2+-0.00003(45)^3 = 7.97925
+
+
+```
+
+
+
+```{r}
+
+#Q2: 
+load("~/Desktop/brfss_for_exam2_fall24.RData")
+View(brfss_sm)
+library(dplyr)
+library(haven)
+ols_model1 <- lm(MentalHealth ~ AgeBracket + Educ + IncomeBracket, data = brfss_sm)
+summary(ols_model1)
+
+#HYP test: at the 95% confirnce interl, I iwll test how eductaion levels affcet mental heath status
+#NULL HYP: Eductaed people with more income and less eudtacted peopel with less income have teh same menatl heat tstaus. p1=p2
+#ALT HYP: Educated peopel with more income have less mental hekath concrens than less eductaed peopel with less income. P1<p2
+educ_data <- brfss_sm %>%
+  filter(!is.na(MentalHealth) & !is.na(Educ))
+pred_vals_ols1 <- predict(ols_model1, brfss_sm)
+summary(pred_vals_ols1)
+
+Inc_data <- brfss_sm %>%
+  filter(!is.na(MentalHealth) & !is.na(IncomeBracket))
+pred_vals_ols2 <- predict(ols_model1, brfss_sm)
+summary(pred_vals_ols2)
+
+#Conclusion: The p-values support the significance of age, education, and income as predictors of mental health. Although the model's R-squared value (0.06877) is low, indicating that there are other factors not included in the model, the findings underscore the importance of socio-economic factors in determining mental health outcomes.
+```
+
+```{r}
+#Q3: 
+#For my subgruope, I will focus on the mentalhelath of among marrital status inviduals with kids from the different races
+
+Sub <- brfss_sm %>%
+  filter(!is.na(MentalHealth) & 
+         MaritalStatus == "Married" &
+         Race %in% c("White", "Black or African American", "American Indian or Alaskan Native", "Asian") & 
+         !is.na(Children ))
+
+  summary(Sub)   
+  
+  #summary stat: 
+```
+                                
+```{r}
+#Q4A: 
+#The variables I choose are marital status, race, and the number of children, as I think family dynamics play a huge role in the mental health reported in the data. These variables seem exogenous because they are not likely to be directly influenced by poor mental health. However, there may be interactions between marital status, family size, and mental health, as having children or being married could affect stress levels and access to emotional support."
+
+
+MEN_Marr <- lm(MentalHealth_01 ~ Race + Children + Age_midpt + income_midpoint, data = Sub)
+summary(MEN_Marr)
+
+#The estimates from the regression are plausible, as they align with expected relationships in existing research. The negative effect of having children on mental health, for instance, makes sense due to the added stress of caregiving. The negative coefficient for age also fits with the idea that older individuals may face more health challenges that could impact mental well-being. All variables in the model—race, children, age, and income—are statistically significant, suggesting strong evidence that these factors are associated with mental health. However, the model explains only a small portion of the variation in mental health, indicating that other unmeasured factors may also play a role.
+```
+```{r}
+
+#Q4C:Construct a joint test of whether a reasonable set of coefficients (such as education)
+
+
+dat_use <- Sub %>%
+  mutate(Race_factor = as.factor(Race)) %>%
+  filter(!is.na(Race) & MaritalStatus == "Married")
+
+d_y_varb <- data.frame(model.matrix(~ dat_use$MentalHealth_01)) 
+dat_use <- dat_use %>%
+  mutate(
+    educ_never_attended = ifelse(Educ == "Never attended school or only kindergarten", 1, 0),
+    educ_grades_1_to_8 = ifelse(Educ == "Grades 1 through 8 (Elementary)", 1, 0),
+    educ_grades_9_to_11 = ifelse(Educ == "Grades 9 through 11 (Some high school)", 1, 0),
+    educ_highschool = ifelse(Educ == "Grade 12 or GED (High school graduate)", 1, 0),
+    educ_somecollege = ifelse(Educ == "College 1 year to 3 years (Some college or technical school)", 1, 0),
+    educ_collegegrad = ifelse(Educ == "College 4 years or more (College graduate)", 1, 0)
+  ) %>%
+  filter(!is.na(Educ))  
+
+d_educ_never_attended <- data.frame(model.matrix(~ dat_use$educ_never_attended))
+d_educ_grades_1_to_8 <- data.frame(model.matrix(~ dat_use$educ_grades_1_to_8))
+d_educ_grades_9_to_11 <- data.frame(model.matrix(~ dat_use$educ_grades_9_to_11))
+d_educ_highschool <- data.frame(model.matrix(~ dat_use$educ_highschool))
+d_educ_somecollege <- data.frame(model.matrix(~ dat_use$educ_somecollege))
+d_educ_collegegrad <- data.frame(model.matrix(~ dat_use$educ_collegegrad))
+
+# Updated education variables
+d_educ_never_attended <- data.frame(model.matrix(~ dat_use$educ_never_attended))
+d_educ_grades_1_to_8 <- data.frame(model.matrix(~ dat_use$educ_grades_1_to_8))
+d_educ_grades_9_to_11 <- data.frame(model.matrix(~ dat_use$educ_grades_9_to_11))
+d_educ_highschool <- data.frame(model.matrix(~ dat_use$educ_highschool))
+d_educ_somecollege <- data.frame(model.matrix(~ dat_use$educ_somecollege))
+d_educ_collegegrad <- data.frame(model.matrix(~ dat_use$educ_collegegrad))
+
+# children and race as before
+d_child <- data.frame(model.matrix(~ dat_use$Children))
+d_Race <- data.frame(model.matrix(~ dat_use$Race_factor)) # This assumes Race_factor replaces State_factor
+
+# Clean the race matrix if needed
+d_Race_cleaned <- d_Race[, colSums(d_Race) != 0] 
+sum(colSums(d_Race_cleaned) == 0)  # This should return 0 now
+dat_use_cleaned <- dat_use %>%
+  filter(!is.na(MentalHealth_01) &
+         !is.na(educ_never_attended) & 
+         !is.na(educ_grades_1_to_8) &
+         !is.na(educ_grades_9_to_11) & 
+         !is.na(educ_highschool) &
+         !is.na(educ_somecollege) &
+         !is.na(educ_collegegrad) &
+         !is.na(Race_factor) & 
+         !is.na(Children))
+
+d_y_varb <- data.frame(model.matrix(~ dat_use_cleaned$MentalHealth_01))
+d_educ_never_attended <- data.frame(model.matrix(~ dat_use_cleaned$educ_never_attended))
+d_educ_grades_1_to_8 <- data.frame(model.matrix(~ dat_use_cleaned$educ_grades_1_to_8))
+d_educ_grades_9_to_11 <- data.frame(model.matrix(~ dat_use_cleaned$educ_grades_9_to_11))
+d_educ_highschool <- data.frame(model.matrix(~ dat_use_cleaned$educ_highschool))
+d_educ_somecollege <- data.frame(model.matrix(~ dat_use_cleaned$educ_somecollege))
+d_educ_collegegrad <- data.frame(model.matrix(~ dat_use_cleaned$educ_collegegrad))
+d_child <- data.frame(model.matrix(~ dat_use_cleaned$Children))
+d_Race_cleaned <- data.frame(model.matrix(~ dat_use_cleaned$Race_factor))
+# Combine all relevant variables into a single data frame
+dat_for_analysis_sub <- data.frame(
+  d_y_varb[, 2],  # Excluding intercept
+  d_educ_never_attended[, 2],
+  d_educ_grades_1_to_8[, 2],
+  d_educ_grades_9_to_11[, 2],
+  d_educ_highschool[, 2],
+  d_educ_somecollege[, 2],
+  d_educ_collegegrad[, 2],
+  d_child[, 2],
+  d_Race_cleaned[, 2:length(d_Race_cleaned)]  # Using cleaned Race data
+)
+
+
+# Rename columns based on the updated variables
+names(dat_for_analysis_sub) <- sub("dat_use.", "", names(dat_for_analysis_sub)) # Drops each repetition of dat_use
+names(dat_for_analysis_sub) <- sub("factor", "", names(dat_for_analysis_sub))  # Drops each repetition of factor
+
+# Custom naming based on education levels and other variables
+names(dat_for_analysis_sub)[1] <- "MentalHealth_01"  # Ensure first column has the mental health variable name
+names(dat_for_analysis_sub)[2:8] <- c("NeverAttended", "Grades1to8", "Grades9to11", "HighSchool", "SomeCollege", "CollegeGrad", "Children")
+names(dat_for_analysis_sub)[9] <- "Race"
+
+```
+
+```{r}
+
+#Training data:
+
+require("standardize")
+set.seed(654321)
+NN <- length(dat_for_analysis_sub$MentalHealth_01)
+
+restrict_1 <- (runif(NN) < 0.1) # use 10% as training data, ordinarily this would be much bigger but start small
+summary(restrict_1) # you should understand wtf this variable is for
+dat_train <- subset(dat_for_analysis_sub, restrict_1)
+dat_test <- subset(dat_for_analysis_sub, !restrict_1)
+# Remove columns with all zeros in dat_train
+dat_train <- dat_train[, colSums(dat_train != 0) > 0]
+# Check that no column is all zeros
+sum(colSums(dat_train) == 0)
+
+# Create the formula excluding the 'HS' column if it exists
+formula_sobj <- reformulate(names(dat_train)[!(names(dat_train) == "HS")], response = "MentalHealth_01")
+
+# Standardize the data using the formula
+sobj <- standardize(formula_sobj, dat_train, family = binomial)
+
+
+# Adjust the formula to exclude that column
+formula_sobj <- reformulate(names(dat_train[2:length(dat_train)]), response = "MentalHealth_01")
+
+# Now standardize the object
+sobj <- standardize(formula_sobj, dat_train, family = binomial)
+
+
+s_dat_test <- predict(sobj, dat_test)
+# OLS linear probability model
+model_lpm1 <- lm(sobj$formula, data = sobj$data)
+summary(model_lpm1)
+pred_vals_lpm <- predict(model_lpm1, s_dat_test)
+pred_model_lpm1 <- (pred_vals_lpm > mean(pred_vals_lpm))
+table(pred = pred_model_lpm1, true = dat_test$MentalHealth_01 )
+
+#Predicted Probabilities: The predicted probabilities from the model indicate that the factors included—such as education levels, number of children, and race—have a limited ability to predict mental health outcomes, as shown by the small R-squared value of 0.01071. The confusion matrix reveals that the model struggles with both false positives (21,869) and false negatives (40,669), meaning it misclassifies a significant number of individuals. Specifically, the model overpredicts mental health issues for some individuals who don't actually have them (false positives) and fails to identify many individuals who do have mental health challenges (false negatives). T
+#Type I Error (False Positives): 21,869
+#Type II Error (False Negatives): 40,669
+
+```
+
+
+
+```{r}
+
+#Q5: 
+
+ols_out1 <- lm(MentalHealth_01 ~ Never attended school or only kindergarten + Grades 1 through 8 (Elementary) + Grades 9 through 11 (Some high school) + Grade 12 or GED (High school graduate + college 1 year to 3 years (Some college or technical school) + College 4 years or more (College graduate), data = Sub)
+
+# Predict values from the linear model
+pred_vals_ols1 <- predict(ols_out1, Sub)
+pred_model_ols1 <- (pred_vals_ols1 > mean(pred_vals_ols1))
+
+# Create a confusion matrix for the linear model
+table(pred = pred_model_ols1, true = Sub$MentalHealth_01)
+
+
+```
+
+
+
+```{r}
+
+#Q6: (30 points) Estimate one or more additional models with other methods (not OLS or logit) to predict mental health. Explain as in previous. Compare the different models and make judgments about strengths and weaknesses.
+#Spike and Slab
+require(spikeslab)
+set.seed(54321)
+model1_spikeslab <- spikeslab(sobj$formula, data = sobj$data)
+summary(model1_spikeslab)
+print(model1_spikeslab)
+plot(model1_spikeslab)
+```
+
+
